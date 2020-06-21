@@ -1,0 +1,129 @@
+function getDataJson(page, filter) {
+    return fetch('http://fishka.skl-co.lh/rest/pricelist?per-page=30&page=' + page + '&filter=' + filter, {
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin'
+    })
+        .then(resp => resp.json())
+        .then(function (items) {
+            return items;
+        });
+}
+
+function renderData(items = [], page = 1) {
+
+    const tableBodyNode = document.querySelector('#pricelist')
+    let html_rows = ''
+    if (items.length > 0) {
+        items.forEach(item => {
+            html_rows += '<tr>'
+            html_rows += '<td>' + item.product_articul + '</td>'
+            html_rows += '<td>' + item.product_brand + '</td>'
+            html_rows += '<td>' + item.product_name + '</td>'
+            html_rows += '<td>' + item.category_name + '</td>'
+            html_rows += '<td>' + item.award + '</td>'
+            html_rows += '<td>' + item.accrual_type + '</td>'
+            html_rows += '</tr>'
+        })
+    } else {
+        html_rows += '<tr>'
+        html_rows += '<td colspan="6" height="40px">' + (page > 1 ? "Данных больше нет" : "Ничего не найдено") + '</td>'
+        html_rows += '</tr>'
+    }
+    tableBodyNode.insertAdjacentHTML('beforeend', html_rows)
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    let page = 1
+    let isLoading = false
+    let endOfPage = window.bottom
+
+    let searchBtn = document.getElementById('search-button');
+    searchBtn.addEventListener('click', onSearchClick);
+
+    let inputsDataOnEnter = document.getElementById('filter-input')
+    inputsDataOnEnter.addEventListener('keydown', searchDataOnEnter);
+
+    let cancelInputsResults = document.getElementById('cancel-button');
+    cancelInputsResults.addEventListener('click', removeDataWhenCancel);
+
+    function removeDataWhenCancel() {
+        inputsDataOnEnter.value = ''
+        onSearchClick()
+    }
+
+    function searchDataOnEnter(event) {
+        if (event.keyCode === 13) {
+            searchBtn.click()
+        }
+    }
+
+
+    const preloader = '<div class="preloader"></div>';
+
+    function showPreloader() {
+        if (preloader) {
+            document.querySelector('table').insertAdjacentHTML('afterend', preloader);
+            document.querySelector('.preloader').style.opacity = 1
+        }
+    }
+
+    function hidePreloader() {
+        let preloader = document.querySelector('.preloader')
+        if (preloader) {
+            preloader.style.opacity = 0
+            setTimeout(function () {
+                0
+                preloader.remove();
+            }, 500);
+        }
+    }
+
+    function dataScrollUpdate() {
+        isLoading = true
+        showPreloader()
+        let searchData = document.getElementById('filter-input').value
+        getDataJson(page, searchData).then(function (items) {
+            renderData(items, page);
+            page++
+            isLoading = false
+            hidePreloader()
+            if (items.length === 0) {
+                endOfPage = true
+            }
+        })
+    }
+
+    function onSearchClick() {
+        page = 1
+        endOfPage = false
+        let body = document.getElementById('pricelist')
+        body.innerHTML = ''
+        loadDataWhenScrollBottomReached()
+    }
+
+    function loadDataWhenScrollBottomReached() {
+        if (isLoading) {
+            return
+        }
+        if (endOfPage) {
+            return
+        }
+        let table = document.getElementsByClassName('table-wrap')[0]
+        if (table.getBoundingClientRect().bottom - window.innerHeight < 0) {
+            dataScrollUpdate()
+        }
+    }
+
+    window.addEventListener('scroll', loadDataWhenScrollBottomReached);
+    dataScrollUpdate()
+});
+
+
+
+
+
+
